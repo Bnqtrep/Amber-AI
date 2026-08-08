@@ -31,8 +31,8 @@ def draw_loss_chart():
     steps = [p[0] for p in loss_history]
     losses = [p[1] for p in loss_history]
 
-    ax.plot(steps, losses, marker='o', markersize=3, linewidth=1.5, color='#2E86AB')
-    ax.fill_between(steps, losses, alpha=0.15, color='#2E86AB')
+    ax.plot(steps, losses, marker='o', markersize=3, linewidth=1.5, color="#000000")
+    ax.fill_between(steps, losses, alpha=0.15, color="#000000")
 
     ax.set_title('Training Loss Curve (Real-time)', fontsize=13, fontweight='bold')
     ax.set_xlabel('Step')
@@ -44,7 +44,7 @@ def draw_loss_chart():
         ax.annotate(f'{losses[-1]:.4f}', 
                     xy=(steps[-1], losses[-1]),
                     xytext=(0, 10), textcoords='offset points',
-                    ha='center', fontsize=9, color='#E85D04', fontweight='bold')
+                    ha='center', fontsize=9, color="#000000", fontweight='bold')
 
     plt.tight_layout()
 
@@ -58,11 +58,11 @@ def check_model_status():
     has_model = os.path.exists('model.pt')
     has_vocab = os.path.exists('vocab.json')
     if has_model and has_vocab:
-        return "✅ Model ready"
+        return "Model ready"
     elif has_model:
-        return "⚠️ model.pt found but vocab.json missing"
+        return "model.pt found but vocab.json missing"
     else:
-        return "❌ No model found. Please train first."
+        return "No model found. Please train first."
 
 def run_training(epochs, batch_size, seq_len, lr, n_embd, n_layer, n_head, dropout, input_file):
     global train_process, loss_history
@@ -102,19 +102,19 @@ def run_training(epochs, batch_size, seq_len, lr, n_embd, n_layer, n_head, dropo
         if parsed:
             loss_history.append(parsed)
             chart = draw_loss_chart()
-        yield log_output, chart, "🟡 Training in progress..."
+        yield log_output, chart, "Training in progress..."
 
     train_process.stdout.close()
     train_process.wait()
 
-    status = "✅ Training Complete!" if train_process.returncode == 0 else "⚠️ Training Stopped"
+    status = "Training Complete!" if train_process.returncode == 0 else "Training Stopped"
     yield log_output, chart, status
 
 def stop_training():
     global train_process
     if train_process is not None and train_process.poll() is None:
         train_process.terminate()
-        return "🛑 Training stopped by user.", None
+        return "Training stopped by user.", None
     return "No training process running.", None
 
 def run_generate(prompt, temperature, length):
@@ -164,13 +164,23 @@ def run_generate(prompt, temperature, length):
     return generated
 
 # ==================== Gradio UI ====================
-with gr.Blocks(title="Shakespeare AI", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(
+    title="Shakespeare AI",
+    theme=gr.themes.Soft(),
+    css="""
+    button, .gr-button, .gradio-container button {
+        background-color: #7f7f7f !important;
+        border-color: #666666 !important;
+        color: white !important;
+    }
+    """
+) as demo:
     gr.Markdown("""
     # 🎭 Shakespeare Transformer GUI
     Train a character-level Transformer on Shakespeare text, then generate new passages.
     """)
 
-    with gr.Tab("🚀 Train"):
+    with gr.Tab("Train"):
         gr.Markdown("### Configure parameters and start training")
 
         with gr.Row():
@@ -198,7 +208,7 @@ with gr.Blocks(title="Shakespeare AI", theme=gr.themes.Soft()) as demo:
 
             # 右侧：实时图表
             with gr.Column(scale=1):
-                gr.Markdown("#### 📈 Real-time Loss Curve")
+                gr.Markdown("#### Loss Function graph")
                 chart_image = gr.Image(label=None, interactive=False, height=400)
 
         train_btn.click(
@@ -208,7 +218,7 @@ with gr.Blocks(title="Shakespeare AI", theme=gr.themes.Soft()) as demo:
         )
         stop_btn.click(fn=stop_training, outputs=[status_text, chart_image])
 
-    with gr.Tab("✨ Generate"):
+    with gr.Tab("Generate"):
         gr.Markdown("### Generate Shakespeare-style text")
 
         with gr.Row():
@@ -216,7 +226,7 @@ with gr.Blocks(title="Shakespeare AI", theme=gr.themes.Soft()) as demo:
                 prompt = gr.Text(value="To be", label="Prompt / Seed Text")
                 temperature = gr.Slider(0.1, 2.0, value=1.0, step=0.1, label="Temperature")
                 length = gr.Slider(50, 2000, value=300, step=50, label="Generate Length (chars)")
-                gen_btn = gr.Button("✨ Generate", variant="primary", size="lg")
+                gen_btn = gr.Button("Generate", variant="primary", size="lg")
 
             with gr.Column(scale=2):
                 output_text = gr.Textbox(label="Generated Text", lines=20, interactive=False)
@@ -227,7 +237,7 @@ with gr.Blocks(title="Shakespeare AI", theme=gr.themes.Soft()) as demo:
             outputs=output_text
         )
 
-    gr.Markdown("---\n💡 **Tip:** Lower temperature (0.2–0.5) = more predictable. Higher (1.0–1.5) = more creative.")
+    gr.Markdown("---\n **Tip:** Lower temperature (0.2–0.5) = more predictable. Higher (1.0–1.5) = more creative.")
 
 if __name__ == '__main__':
     demo.launch()
