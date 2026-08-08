@@ -136,29 +136,52 @@ def train(args):
     if os.path.exists(args.save_path):
         try:
             ckpt = torch.load(args.save_path, map_location=device)
+            # Load model weights first
             if 'model_state_dict' in ckpt:
                 model.load_state_dict(ckpt['model_state_dict'])
-            if 'optimizer_state_dict' in ckpt:
-                try:
+
+            # Attempt to load optimizer and RNG states; treat failures as fatal for resuming
+            resume_ok = True
+            try:
+                if 'optimizer_state_dict' in ckpt:
                     optimizer.load_state_dict(ckpt['optimizer_state_dict'])
-                except Exception as e:
-                    print(f"Warning: failed to load optimizer state: {e}")
-            # restore RNG states
-            if 'rng_state' in ckpt:
-                try:
+            except Exception as e:
+                resume_ok = False
+                raise RuntimeError(f"Failed to load optimizer state: {e}")
+
+            # restore CPU RNG state
+            try:
+                if 'rng_state' in ckpt:
                     torch.set_rng_state(ckpt['rng_state'])
-                except Exception as e:
-                    print(f"Warning: failed to set CPU RNG state: {e}")
-            if torch.cuda.is_available() and 'cuda_rng_state' in ckpt and ckpt['cuda_rng_state'] is not None:
-                try:
+            except Exception as e:
+                resume_ok = False
+                raise RuntimeError(f"Failed to set CPU RNG state: {e}")
+
+            # restore CUDA RNG state if applicable
+            try:
+                if torch.cuda.is_available() and 'cuda_rng_state' in ckpt and ckpt['cuda_rng_state'] is not None:
                     torch.cuda.set_rng_state_all(ckpt['cuda_rng_state'])
-                except Exception as e:
-                    print(f"Warning: failed to set CUDA RNG state: {e}")
+            except Exception as e:
+                resume_ok = False
+                raise RuntimeError(f"Failed to set CUDA RNG state: {e}")
+
+            if not resume_ok:
+                raise RuntimeError("Resume aborted due to failed state restore")
+
+            # Only set epoch/global_step when all restores succeeded
             start_epoch = ckpt.get('epoch', 0) + 1
             global_step = ckpt.get('global_step', 0)
             print(f"Resuming from epoch {start_epoch}")
+
         except Exception as e:
-            print(f"Warning: failed to load checkpoint {args.save_path}: {e}. Starting fresh.")
+            # Any failure above aborts resume and reinitializes model/optimizer/state for fresh training
+            print(f"Resume failed: {e}. Falling back to fresh training (reinitializing model and optimizer).")
+            # reinitialize model and optimizer to ensure a clean start
+            model = TinyGPT(vocab_size=vocab.vocab_size, seq_len=args.seq_len, n_embd=args.n_embd, n_layer=args.n_layer, n_head=args.n_head, dropout=args.dropout)
+            model = model.to(device)
+            optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+            start_epoch = 1
+            global_step = 0
 
     for epoch in range(start_epoch, args.epochs + 1):
         model.train()
