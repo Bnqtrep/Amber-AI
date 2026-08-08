@@ -168,6 +168,25 @@ with gr.Blocks(
     title="Shakespeare AI",
     theme=gr.themes.Soft(),
     css="""
+    :root {
+        --color-accent: #000000 !important;
+        --color-accent-soft: #000000 !important;
+        --primary-50: #000000 !important;
+        --primary-100: #000000 !important;
+        --primary-200: #000000 !important;
+        --primary-300: #000000 !important;
+        --primary-400: #000000 !important;
+        --primary-500: #000000 !important;
+        --primary-600: #000000 !important;
+        --primary-700: #000000 !important;
+        --primary-800: #000000 !important;
+        --primary-900: #000000 !important;
+    }
+
+    .gradio-container, .gradio-container * {
+        color: black !important;
+    }
+
     button, .gr-button, .gradio-container button {
         background-color: #7f7f7f !important;
         border-color: #666666 !important;
@@ -176,8 +195,8 @@ with gr.Blocks(
     """
 ) as demo:
     gr.Markdown("""
-    # 🎭 Shakespeare Transformer GUI
-    Train a character-level Transformer on Shakespeare text, then generate new passages.
+    # Amber - AI
+    Will upgrade the dataset later
     """)
 
     with gr.Tab("Train"):
@@ -237,7 +256,7 @@ with gr.Blocks(
             outputs=output_text
         )
 
-    gr.Markdown("---\n **Tip:** Lower temperature (0.2–0.5) = more predictable. Higher (1.0–1.5) = more creative.")
+    
 
 if __name__ == '__main__':
     demo.launch()
