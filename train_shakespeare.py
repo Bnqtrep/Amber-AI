@@ -131,7 +131,36 @@ def train(args):
     best_loss = float('inf')
     start_time = time.time()
 
-    for epoch in range(1, args.epochs + 1):
+    # resume support: if checkpoint exists, load model, optimizer, epoch, and RNG states
+    start_epoch = 1
+    if os.path.exists(args.save_path):
+        try:
+            ckpt = torch.load(args.save_path, map_location=device)
+            if 'model_state_dict' in ckpt:
+                model.load_state_dict(ckpt['model_state_dict'])
+            if 'optimizer_state_dict' in ckpt:
+                try:
+                    optimizer.load_state_dict(ckpt['optimizer_state_dict'])
+                except Exception as e:
+                    print(f"Warning: failed to load optimizer state: {e}")
+            # restore RNG states
+            if 'rng_state' in ckpt:
+                try:
+                    torch.set_rng_state(ckpt['rng_state'])
+                except Exception as e:
+                    print(f"Warning: failed to set CPU RNG state: {e}")
+            if torch.cuda.is_available() and 'cuda_rng_state' in ckpt and ckpt['cuda_rng_state'] is not None:
+                try:
+                    torch.cuda.set_rng_state_all(ckpt['cuda_rng_state'])
+                except Exception as e:
+                    print(f"Warning: failed to set CUDA RNG state: {e}")
+            start_epoch = ckpt.get('epoch', 0) + 1
+            global_step = ckpt.get('global_step', 0)
+            print(f"Resuming from epoch {start_epoch}")
+        except Exception as e:
+            print(f"Warning: failed to load checkpoint {args.save_path}: {e}. Starting fresh.")
+
+    for epoch in range(start_epoch, args.epochs + 1):
         model.train()
         running_loss = 0.0
         for i, (x, y) in enumerate(loader):
@@ -159,7 +188,19 @@ def train(args):
             'model_state_dict': model.state_dict(),
             'args': vars(args),
             'vocab': vocab.stoi,
+            'epoch': epoch,
+            'optimizer_state_dict': optimizer.state_dict(),
+            'rng_state': torch.get_rng_state(),
+            'global_step': global_step,
         }
+        if torch.cuda.is_available():
+            try:
+                ckpt['cuda_rng_state'] = torch.cuda.get_rng_state_all()
+            except Exception:
+                ckpt['cuda_rng_state'] = None
+        else:
+            ckpt['cuda_rng_state'] = None
+
         torch.save(ckpt, args.save_path)
         print(f"Saved checkpoint to {args.save_path}")
 
