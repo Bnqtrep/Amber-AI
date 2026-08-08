@@ -185,6 +185,8 @@ with gr.Blocks(
 
     .gradio-container, .gradio-container * {
         color: black !important;
+        background: transparent !important;
+        box-shadow: none !important;
     }
 
     button, .gr-button, .gradio-container button {
