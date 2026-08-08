@@ -17,7 +17,7 @@ Run the following commands in terminal: (need to install python first)
 
 👌😂😘😘💕🤣🏀
 
-Next naigate to the folder and open it with terminal
+Clone the repo and naigate to the folder and open it with terminal
 ## then run
 - python gui.py
 
